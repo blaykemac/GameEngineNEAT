@@ -11,31 +11,64 @@ X_RIGHT_OFFSET_FROM_SCREEN = 100
 Y_UP_OFFSET_FROM_SCREEN = 10
 Y_DOWN_OFFSET_FROM_SCREEN = 10
 
-TARGET_FPS = 60
+TARGET_FPS = 166
+
+import math
+import shapes
+from shapes import CollisionDetector as cd
+import random
 
 class GameEngine:
-    def __init__(self):
+    def __init__(self, user_input = True):
         self.running = False
         self.fitness = 0
+        self.user_input = user_input
         pass
 
     def start(self):
         self.running = True
         self.rocket = Rocket()
         self.asteroids = []
+        self.dead_asteroids = []
         self.projectiles = []
-        #self.entities = []
+        self.dead_projectiles = []
+        self.level = 1
         pass
 
-    def updateAll(self):
+    def updateAll(self, action):
+        # action tuple (left, right, up, down, shoot)
         # Go through all player, projectiles and asteroids and check for collision
         for projectile in self.projectiles:
             projectile.update()
+            if projectile.x > SCREEN_SIZE[0]:
+                self.projectiles.remove(projectile)
+                self.dead_projectiles.append(projectile)
 
         for asteroid in self.asteroids:
             asteroid.update()
+            if asteroid.x + asteroid.r < 0:
+                #if asteroid in self.asteroids:
+                    #print(self.asteroids)
+                    #print(asteroid)
+                self.asteroids.remove(asteroid)
+                self.dead_asteroids.append(asteroid)
 
-        self.rocket.update()
+        self.rocket.update(self, action)
+
+    def checkCollisions(self):
+        # Check if player collides with asteroids
+        for asteroid in self.asteroids:
+            if cd.collisionRectCircle(asteroid.getHitbox(), self.rocket.getHitbox()):
+                self.running = False
+            for projectile in self.projectiles:
+                if cd.collisionRectCircle(asteroid.getHitbox(), projectile.getHitbox()):
+                    projectile.alive = False
+                    asteroid.alive = False
+                    self.dead_projectiles.append(projectile)
+                    self.projectiles.remove(projectile)
+                    self.dead_asteroids.append(asteroid)
+                    self.asteroids.remove(asteroid)
+
 
     def isRunning(self):
         return self.running
@@ -60,6 +93,17 @@ class GameEngine:
         #call update on that object
         # action will be a tuple of booleans
         # (moveLeft, moveRight, moveUp, moveDown, fire)
+        if self.isRunning():
+            self.updateAll(action)
+            self.checkCollisions()
+
+            while len(self.asteroids) < self.level: # Repopulate asteroids
+                self.asteroids.append(Asteroid(2 * SCREEN_SIZE[0], random.randint(0, SCREEN_SIZE[1]), 30))
+        # Now we compute the logic of the program
+        # IE. If player shot, generate projectile entity with a certain speed
+        # Check collisions between rocket and asteroids
+        # Check collisions between projectiles and asteroids
+
 
         pass
 
@@ -73,6 +117,9 @@ class Entity:
     def move(self):
         pass
 
+    def getHitbox(self):
+        pass
+
 class Rocket(Entity):
 
     def __init__(self):
@@ -83,9 +130,16 @@ class Rocket(Entity):
         self.y = SCREEN_SIZE[1] // 2 - self.height // 2
         self.HORIZONTAL_MOVE = SCREEN_SIZE[0] / TARGET_FPS  # Desired Rocket Speed / Frame Rate | (pixels/sec)*(sec / frames)
         self.VERTICAL_MOVE = SCREEN_SIZE[1] / TARGET_FPS  # Desired Rocket Speed / Frame Rate | (pixels/sec)*(sec / frames)
+        self.holding_fire = False # We dont fire intially
     pass
 
-    def fireLaser(self):
+    def getHitbox(self):
+        return shapes.Rectangle(self.x, self.y, self.width, self.height)
+
+    def fireLaser(self, game):
+        projectile = LaserBeam(self.x + self.width, self.y)
+        game.projectiles.append(projectile)
+
         pass
 
     def move(self, left = False, right = False, up = False, down = False):
@@ -111,10 +165,47 @@ class Rocket(Entity):
         if (self.y + self.height > SCREEN_SIZE[1] - Y_UP_OFFSET_FROM_SCREEN):
             self.y = SCREEN_SIZE[1] - Y_UP_OFFSET_FROM_SCREEN - self.height
 
+    def update(self, game, action):
+        self.move(action[0], action[1], action[2], action[3])
+        if action[4] and not self.holding_fire:
+            self.fireLaser(game)
+            self.holding_fire = True
+        if not action[4]: self.holding_fire = False
+
+class LaserBeam(Entity):
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.width = 20
+        self.height = 10
+        self.HORIZONTAL_MOVE = 2 * SCREEN_SIZE[0] / TARGET_FPS  # Desired Rocket Speed / Frame Rate | (pixels/sec)*(sec / frames)
+        self.alive = True
+
+    def move(self):
+        self.x += self.HORIZONTAL_MOVE
+
+    def update(self):
+        self.move()
 
 
+    def getHitbox(self):
+        return shapes.Rectangle(self.x, self.y, self.width, self.height)
 
 class Asteroid(Entity):
-    def __init__(self):
+    def __init__(self, x, y, r):
+        self.x = x
+        self.y = y
+        self.r = r
+        self.alive = True
+        self.HORIZONTAL_MOVE = SCREEN_SIZE[0] / TARGET_FPS  # Desired Rocket Speed / Frame Rate | (pixels/sec)*(sec / frames)
         pass
+
+    def move(self):
+        self.x -= self.HORIZONTAL_MOVE
+
+    def update(self):
+        self.move()
+
+    def getHitbox(self):
+        return shapes.Circle(self.x, self.y, self.r)
 

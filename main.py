@@ -15,7 +15,7 @@ def eval_genome(genome, config):
 
     for runs in range(runs_per_net):
 
-        game = ge.GameEngine()
+        game = ge.GameEngine(False)
         game.start()
 
         while game.isRunning():
