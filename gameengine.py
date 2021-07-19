@@ -33,6 +33,8 @@ class GameEngine:
         self.projectiles = []
         self.dead_projectiles = []
         self.level = 1
+        self.ASTEROID_REWARD = 1000
+        self.FRAME_SURVIVE_REWARD = 1
         pass
 
     def updateAll(self, action):
@@ -53,7 +55,14 @@ class GameEngine:
                 self.asteroids.remove(asteroid)
                 self.dead_asteroids.append(asteroid)
 
+        # Generate enough asteroids for given level
+        while len(self.asteroids) < self.level:  # Repopulate asteroids
+            self.asteroids.append(
+                Asteroid(2 * SCREEN_SIZE[0], random.randint(0, SCREEN_SIZE[1]), random.randint(20, 40)))
+
         self.rocket.update(self, action)
+
+        self.fitness += self.FRAME_SURVIVE_REWARD
 
     def checkCollisions(self):
         # Check if player collides with asteroids
@@ -68,6 +77,7 @@ class GameEngine:
                     self.projectiles.remove(projectile)
                     self.dead_asteroids.append(asteroid)
                     self.asteroids.remove(asteroid)
+                    self.fitness += self.ASTEROID_REWARD
 
 
     def isRunning(self):
@@ -85,6 +95,19 @@ class GameEngine:
     # This will probably just be the screen (either raw pixels or most likely some
     # array that more succinctly encapsulates the data)
     def getObervables(self):
+        #observables = []
+        #observables.append(self.rocket.x)
+        #observables.append(self.rocket.y)
+        #for asteroid in self.asteroids:
+            #observables.append(asteroid.x)
+            #observables.append(asteroid.y)
+            #observables.append(asteroid.r)
+        observables = [[0] * 50]*50 #Entire screen
+        #Render rocket, then asteroid, then maybe laser
+        #observables[self.rocket.y // 10 : (self.rocket.y + self.rocket.height) // 10][]
+
+        return observables
+
         pass
 
     # Simulate the next frame given the action or player input
@@ -97,8 +120,6 @@ class GameEngine:
             self.updateAll(action)
             self.checkCollisions()
 
-            while len(self.asteroids) < self.level: # Repopulate asteroids
-                self.asteroids.append(Asteroid(2 * SCREEN_SIZE[0], random.randint(0, SCREEN_SIZE[1]), 30))
         # Now we compute the logic of the program
         # IE. If player shot, generate projectile entity with a certain speed
         # Check collisions between rocket and asteroids
@@ -128,8 +149,8 @@ class Rocket(Entity):
         #Define x and y from the top-left of the rocket shape
         self.x = X_LEFT_OFFSET_FROM_SCREEN
         self.y = SCREEN_SIZE[1] // 2 - self.height // 2
-        self.HORIZONTAL_MOVE = SCREEN_SIZE[0] / TARGET_FPS  # Desired Rocket Speed / Frame Rate | (pixels/sec)*(sec / frames)
-        self.VERTICAL_MOVE = SCREEN_SIZE[1] / TARGET_FPS  # Desired Rocket Speed / Frame Rate | (pixels/sec)*(sec / frames)
+        self.HORIZONTAL_MOVE = SCREEN_SIZE[0] // TARGET_FPS  # Desired Rocket Speed / Frame Rate | (pixels/sec)*(sec / frames)
+        self.VERTICAL_MOVE = SCREEN_SIZE[1] // TARGET_FPS  # Desired Rocket Speed / Frame Rate | (pixels/sec)*(sec / frames)
         self.holding_fire = False # We dont fire intially
     pass
 
@@ -176,9 +197,9 @@ class LaserBeam(Entity):
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.width = 20
-        self.height = 10
-        self.HORIZONTAL_MOVE = 2 * SCREEN_SIZE[0] / TARGET_FPS  # Desired Rocket Speed / Frame Rate | (pixels/sec)*(sec / frames)
+        self.width = 30
+        self.height = 5
+        self.HORIZONTAL_MOVE = 2 * SCREEN_SIZE[0] // TARGET_FPS  # Desired Rocket Speed / Frame Rate | (pixels/sec)*(sec / frames)
         self.alive = True
 
     def move(self):
@@ -197,7 +218,7 @@ class Asteroid(Entity):
         self.y = y
         self.r = r
         self.alive = True
-        self.HORIZONTAL_MOVE = SCREEN_SIZE[0] / TARGET_FPS  # Desired Rocket Speed / Frame Rate | (pixels/sec)*(sec / frames)
+        self.HORIZONTAL_MOVE = SCREEN_SIZE[0] // TARGET_FPS  # Desired Rocket Speed / Frame Rate | (pixels/sec)*(sec / frames)
         pass
 
     def move(self):
